@@ -10,7 +10,7 @@ import { registerSlashCommand } from '../../../slash-commands.js';
 import { waitUntilCondition } from '../../../utils.js';
 import { is_group_generating, selected_group } from '../../../group-chats.js';
 
-const MODULE_NAME = 'Objective_extended';
+const MODULE_NAME = 'Objective';
 
 
 let taskTree = null;
@@ -158,7 +158,6 @@ function setCurrentTask(taskId = null, skipSave = false) {
     // TODO: Should probably null this rather than set empty object
     currentTask = {};
 
-    // Find the task, either next incomplete, or by provided taskId
     if (taskId === null) {
         currentTask = getNextIncompleteTaskRecurse(taskTree) || {};
     } else {
@@ -244,11 +243,13 @@ class ObjectiveTask {
     // Accepts optional index. Defaults to adding to end of list.
     addTask(description, index = null) {
         index = index != null ? index : index = this.children.length;
-        this.children.splice(index, 0, new ObjectiveTask(
+        const newTask = new ObjectiveTask(
             { description: description, parentId: this.id },
-        ));
+        );
+        this.children.splice(index, 0, newTask);
         saveState();
     }
+
 
     getIndex() {
         if (this.parentId !== null) {
@@ -897,18 +898,24 @@ function parseTasksFromInput(input) {
     const taskStack = [];
     let currentParent = currentObjective;
 
+    console.log('Parsing tasks from input:', input);
+
     lines.forEach(line => {
         if (line.startsWith('>>')) {
             const subtaskDescription = line.replace(/^>>\s*/, '');
             if (taskStack.length > 0) {
                 const parentTask = taskStack[taskStack.length - 1];
                 parentTask.addTask(subtaskDescription);
+                console.log(`Added subtask "${subtaskDescription}" to task "${parentTask.description}"`);
+            } else {
+                console.warn('Subtask found but no parent task exists.');
             }
         } else if (line.startsWith('>')) {
             const taskDescription = line.replace(/^>\s*/, '');
             currentObjective.addTask(taskDescription);
             const newTask = currentObjective.children[currentObjective.children.length - 1];
             taskStack.push(newTask);
+            console.log(`Added task "${taskDescription}"`);
         }
     });
 
