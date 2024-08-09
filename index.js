@@ -10,7 +10,7 @@ import { registerSlashCommand } from '../../../slash-commands.js';
 import { waitUntilCondition } from '../../../utils.js';
 import { is_group_generating, selected_group } from '../../../group-chats.js';
 
-const MODULE_NAME = 'Objective';
+const MODULE_NAME = 'Objective_extended';
 
 
 let taskTree = null;
