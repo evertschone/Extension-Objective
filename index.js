@@ -818,6 +818,11 @@ jQuery(() => {
                     <small>Go to parent task</small>
                 </div>
 
+                <!-- New Textarea for Bulk Task Input -->
+                <label for="bulk-task-input"><small>Enter tasks and subtasks in the format described</small></label>
+                <textarea id="bulk-task-input" class="text_pole textarea_compact" rows="8" placeholder="> task 1\n>> task 1 subtask 1\n>> task 1 subtask 2\n> task 2\n> task 3\n> task 4\n>> task 4 subtask 1"></textarea>
+                <input id="parse-tasks-button" class="menu_button" type="button" value="Parse Tasks" />
+
                 <div id="objective-tasks"> </div>
                 <div class="objective_block margin-bot-10px">
                     <div class="objective_block objective_block_control flex1 flexFlowColumn">
@@ -836,6 +841,7 @@ jQuery(() => {
                 <div class="objective_block flex-container">
                     <input id="objective_prompt_edit" class="menu_button" type="submit" value="Edit Prompts" />
                 </div>
+
                 <hr class="sysHR">
             </div>
         </div>
@@ -878,4 +884,34 @@ jQuery(() => {
     });
 
     registerSlashCommand('taskcheck', checkTaskCompleted, [], '– checks if the current task is completed', true, true);
+
+    // Add the new button event handler
+    $('#parse-tasks-button').on('click', () => {
+        const input = $('#bulk-task-input').val();
+        parseTasksFromInput(input);
+    });
 });
+
+function parseTasksFromInput(input) {
+    const lines = input.split('\n').map(line => line.trim());
+    const taskStack = [];
+    let currentParent = currentObjective;
+
+    lines.forEach(line => {
+        if (line.startsWith('>>')) {
+            const subtaskDescription = line.replace(/^>>\s*/, '');
+            if (taskStack.length > 0) {
+                const parentTask = taskStack[taskStack.length - 1];
+                parentTask.addTask(subtaskDescription);
+            }
+        } else if (line.startsWith('>')) {
+            const taskDescription = line.replace(/^>\s*/, '');
+            currentObjective.addTask(taskDescription);
+            const newTask = currentObjective.children[currentObjective.children.length - 1];
+            taskStack.push(newTask);
+        }
+    });
+
+    updateUiTaskList();
+    setCurrentTask();
+}
