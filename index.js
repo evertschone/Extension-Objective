@@ -25,7 +25,7 @@ let lastMessageWasSwipe = false;
 const defaultPrompts = {
     'createTask': 'Pause your roleplay. Please generate a numbered list of plain text tasks to complete an objective. The objective that you must make a numbered task list for is: "{{objective}}". The tasks created should take into account the character traits of {{char}}. These tasks may or may not involve {{user}} directly. Include the objective as the final task.',
     'checkTaskCompleted': 'Pause your roleplay. Determine if this task is completed: [{{task}}]. To do this, examine the most recent messages. Your response must only contain either true or false, and nothing else. Example output: true',
-    'currentTask': 'Your current task is [{{task}}]. Balance existing roleplay with completing this task.',
+    'currentTask': '{{subject}}\'s current task is [{{task}}]. Balance existing roleplay with completing this task.',
 };
 
 let objectivePrompts = defaultPrompts;
@@ -58,6 +58,7 @@ function getTaskByIdRecurse(taskId, task) {
 function substituteParamsPrompts(content, substituteGlobal) {
     content = content.replace(/{{objective}}/gi, currentObjective.description);
     content = content.replace(/{{task}}/gi, currentTask.description);
+    content = content.replace(/{{subject}}/gi, currentTask.subject || 'The character');
     if (currentTask.parent) {
         content = content.replace(/{{parent}}/gi, currentTask.parent.description);
     }
@@ -155,7 +156,6 @@ function getNextIncompleteTaskRecurse(task) {
 function setCurrentTask(taskId = null, skipSave = false) {
     const context = getContext();
 
-    // TODO: Should probably null this rather than set empty object
     currentTask = {};
 
     if (taskId === null) {
@@ -164,32 +164,31 @@ function setCurrentTask(taskId = null, skipSave = false) {
         currentTask = getTaskById(taskId);
     }
 
-    // Don't just check for a current task, check if it has data
     const description = currentTask.description || null;
     if (description) {
-        const extensionPromptText = substituteParamsPrompts(objectivePrompts.currentTask, true);
+        if (context.currentCharacter === currentTask.subject || context.currentCharacter === 'Your') {
+            const extensionPromptText = substituteParamsPrompts(objectivePrompts.currentTask, true);
 
-        // Remove highlights
-        $('.objective-task').css({ 'border-color': '', 'border-width': '' });
-        // Highlight current task
-        let highlightTask = currentTask;
-        while (highlightTask.parentId !== '') {
-            if (highlightTask.descriptionSpan) {
-                highlightTask.descriptionSpan.css({ 'border-color': 'yellow', 'border-width': '2px' });
+            $('.objective-task').css({ 'border-color': '', 'border-width': '' });
+            let highlightTask = currentTask;
+            while (highlightTask.parentId !== '') {
+                if (highlightTask.descriptionSpan) {
+                    highlightTask.descriptionSpan.css({ 'border-color': 'yellow', 'border-width': '2px' });
+                }
+                const parent = getTaskById(highlightTask.parentId);
+                highlightTask = parent;
             }
-            const parent = getTaskById(highlightTask.parentId);
-            highlightTask = parent;
-        }
 
-        // Update the extension prompt
-        context.setExtensionPrompt(MODULE_NAME, extensionPromptText, 1, $('#objective-chat-depth').val());
-        console.info(`Current task in context.extensionPrompts.Objective is ${JSON.stringify(context.extensionPrompts.Objective)}`);
+            context.setExtensionPrompt(MODULE_NAME, extensionPromptText, 1, $('#objective-chat-depth').val());
+            console.info(`Current task in context.extensionPrompts.Objective is ${JSON.stringify(context.extensionPrompts.Objective)}`);
+        } else {
+            console.info('Current task is not for the current character.');
+        }
     } else {
         context.setExtensionPrompt(MODULE_NAME, '');
         console.info('No current task');
     }
 
-    // Save state if not skipping
     if (!skipSave) {
         saveState();
     }
@@ -213,6 +212,7 @@ function getHighestTaskIdRecurse(task) {
 class ObjectiveTask {
     id;
     description;
+    subject;
     completed;
     parentId;
     children;
@@ -220,14 +220,16 @@ class ObjectiveTask {
     // UI Elements
     taskHtml;
     descriptionSpan;
+    subjectSpan;
     completedCheckbox;
     deleteTaskButton;
     addTaskButton;
     moveUpBotton;
     moveDownButton;
 
-    constructor({ id = undefined, description, completed = false, parentId = '' }) {
+    constructor({ id = undefined, description, subject = '', completed = false, parentId = '' }) {
         this.description = description;
+        this.subject = subject;
         this.parentId = parentId;
         this.children = [];
         this.completed = completed;
@@ -241,15 +243,14 @@ class ObjectiveTask {
     }
 
     // Accepts optional index. Defaults to adding to end of list.
-    addTask(description, index = null) {
+    addTask(description, subject, index = null) {
         index = index != null ? index : index = this.children.length;
         const newTask = new ObjectiveTask(
-            { description: description, parentId: this.id },
+            { description: description, subject: subject, parentId: this.id },
         );
         this.children.splice(index, 0, newTask);
         saveState();
     }
-
 
     getIndex() {
         if (this.parentId !== null) {
@@ -417,7 +418,7 @@ class ObjectiveTask {
     onAddClick() {
         const index = this.getIndex();
         const parent = getTaskById(this.parentId);
-        parent.addTask('', index + 1);
+        parent.addTask('', '', index + 1);
         updateUiTaskList();
         setCurrentTask();
     }
@@ -432,6 +433,7 @@ class ObjectiveTask {
         return {
             'id': this.id,
             'description': this.description,
+            'subject': this.subject,
             'completed': this.completed,
             'parentId': this.parentId,
             'children': children,
@@ -504,6 +506,7 @@ function onEditPromptClick() {
     // Handle load
     $('#objective-custom-prompt-select').on('change', loadCustomPrompt);
 }
+
 async function newCustomPrompt() {
     const customPromptName = await callPopup('<h3>Custom Prompt name:</h3>', 'input');
 
@@ -570,7 +573,6 @@ function populateCustomPrompts() {
 //#       UI AND Settings       #//
 //###############################//
 
-
 const defaultSettings = {
     currentObjectiveId: null,
     taskTree: null,
@@ -620,7 +622,6 @@ function debugObjectiveExtension() {
 
 window.debugObjectiveExtension = debugObjectiveExtension;
 
-
 // Populate UI task list
 function updateUiTaskList() {
     $('#objective-tasks').empty();
@@ -646,7 +647,7 @@ function updateUiTaskList() {
         <input id="objective-task-add-first" type="button" class="menu_button" value="Add Task">
         `);
         $('#objective-task-add-first').on('click', () => {
-            currentObjective.addTask('');
+            currentObjective.addTask('', '');
             setCurrentTask();
             updateUiTaskList();
         });
@@ -694,6 +695,7 @@ function loadTaskChildrenRecurse(savedTask) {
     let tempTaskTree = new ObjectiveTask({
         id: savedTask.id,
         description: savedTask.description,
+        subject: savedTask.subject,
         completed: savedTask.completed,
         parentId: savedTask.parentId,
     });
@@ -748,6 +750,7 @@ function loadSettings() {
                 return new ObjectiveTask({
                     id: idIncrement,
                     description: task.description,
+                    subject: '',
                     completed: task.completed,
                     parentId: taskTree.id,
                 });
@@ -765,7 +768,7 @@ function loadSettings() {
 
     // Make sure there's a root task
     if (!taskTree) {
-        taskTree = new ObjectiveTask({ id: 0, description: $('#objective-text').val() });
+        taskTree = new ObjectiveTask({ id: 0, description: $('#objective-text').val(), subject: '' });
     }
 
     currentObjective = taskTree;
@@ -823,8 +826,11 @@ jQuery(() => {
 
                 <!-- New Textarea for Bulk Task Input, initially hidden -->
                 <div id="bulk-task-input-container" style="display: none;">
+                    <label for="character-select"><small>Select character for task</small></label>
+                    <select id="character-select" class="text_pole"></select>
+
                     <label for="bulk-task-input"><small>Enter tasks and subtasks in the format described</small></label>
-                    <textarea id="bulk-task-input" class="text_pole textarea_compact" rows="8" placeholder="> task 1\n>> task 1 subtask 1\n>> task 1 subtask 2\n> task 2\n> task 3\n> task 4\n>> task 4 subtask 1"></textarea>
+                    <textarea id="bulk-task-input" class="text_pole textarea_compact" rows="8" placeholder="> [subject] task 1\n>> [subject] task 1 subtask 1\n>> [subject] task 1 subtask 2\n> [subject] task 2\n> [subject] task 3\n> [subject] task 4\n>> [subject] task 4 subtask 1"></textarea>
                     <input id="parse-tasks-button" class="menu_button" type="button" value="Parse Tasks" />
                     <input id="export-tasks-button" class="menu_button" type="button" value="Export Tasks to Text" />
                 </div>
@@ -903,7 +909,39 @@ jQuery(() => {
 
     // Add the button event handler to export the tasks to the textarea
     $('#export-tasks-button').on('click', exportTasksToTextarea);
+
+    // Populate the character dropdown
+    populateCharacterDropdown();
 });
+
+function populateCharacterDropdown() {
+    const context = getContext();
+    const DEFAULT_VOICE_MARKER = "Your";
+    let characters = [];
+    if (context.groupId === null) {
+        // Single char chat
+        characters.push(DEFAULT_VOICE_MARKER);
+        characters.push(context.name1);
+        characters.push(context.name2);
+    } else {
+        // Group chat
+        characters.push(DEFAULT_VOICE_MARKER);
+        characters.push(context.name1);
+        const group = context.groups.find(group => context.groupId == group.id);
+        for (let member of group.members) {
+            const character = context.characters.find(char => char.avatar == member);
+            if (character) {
+                characters.push(character.name);
+            }
+        }
+    }
+
+    const characterSelect = $('#character-select');
+    characterSelect.empty();
+    characters.forEach(character => {
+        characterSelect.append(new Option(character, character));
+    });
+}
 
 function parseTasksFromInput(input) {
     const lines = input.split('\n').map(line => line.trim());
@@ -913,21 +951,24 @@ function parseTasksFromInput(input) {
     console.log('Parsing tasks from input:', input);
 
     lines.forEach(line => {
-        if (line.startsWith('>>')) {
-            const subtaskDescription = line.replace(/^>>\s*/, '');
-            if (taskStack.length > 0) {
+        const match = line.match(/^(>+)\s*($$(.*?)$$)?\s*(.*)$/);
+        if (match) {
+            const level = match[1].length;
+            const subject = match[3] || $('#character-select').val();
+            const description = match[4];
+
+            if (level === 1) {
+                currentObjective.addTask(description, subject);
+                const newTask = currentObjective.children[currentObjective.children.length - 1];
+                taskStack.push(newTask);
+                console.log(`Added task "${description}" with subject "${subject}"`);
+            } else if (level === 2 && taskStack.length > 0) {
                 const parentTask = taskStack[taskStack.length - 1];
-                parentTask.addTask(subtaskDescription);
-                console.log(`Added subtask "${subtaskDescription}" to task "${parentTask.description}"`);
+                parentTask.addTask(description, subject);
+                console.log(`Added subtask "${description}" with subject "${subject}" to task "${parentTask.description}"`);
             } else {
                 console.warn('Subtask found but no parent task exists.');
             }
-        } else if (line.startsWith('>')) {
-            const taskDescription = line.replace(/^>\s*/, '');
-            currentObjective.addTask(taskDescription);
-            const newTask = currentObjective.children[currentObjective.children.length - 1];
-            taskStack.push(newTask);
-            console.log(`Added task "${taskDescription}"`);
         }
     });
 
@@ -938,19 +979,22 @@ function parseTasksFromInput(input) {
 function exportTasksToTextarea() {
     const formatTasks = (task, level = 0) => {
         const prefix = '>'.repeat(level + 1);
-        let result = `${prefix} ${task.description}\n`;
+        const subjectText = task.subject ? `[${task.subject}] ` : '';
+        let result = `${
+            prefix} ${subjectText}${task.description}\n`;
 
-        for (const child of task.children) {
-            result += formatTasks(child, level + 1);
+            for (const child of task.children) {
+                result += formatTasks(child, level + 1);
+            }
+    
+            return result;
+        };
+    
+        let formattedTasks = '';
+        for (const task of currentObjective.children) {
+            formattedTasks += formatTasks(task);
         }
-
-        return result;
-    };
-
-    let formattedTasks = '';
-    for (const task of currentObjective.children) {
-        formattedTasks += formatTasks(task);
+    
+        $('#bulk-task-input').val(formattedTasks);
     }
-
-    $('#bulk-task-input').val(formattedTasks);
-}
+    
