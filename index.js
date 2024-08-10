@@ -816,13 +816,18 @@ jQuery(() => {
                 </div>
                 <div id="objective-parent" class="objective_block flex-container">
                     <i class="objective-task-button fa-solid fa-circle-left fa-2x" title="Go to Parent"></i>
-                    <small>Go to parent task</small>
-                </div>
+                    <small>Go to parent task</small></div>
 
-                <!-- New Textarea for Bulk Task Input -->
-                <label for="bulk-task-input"><small>Enter tasks and subtasks in the format described</small></label>
-                <textarea id="bulk-task-input" class="text_pole textarea_compact" rows="8" placeholder="> task 1\n>> task 1 subtask 1\n>> task 1 subtask 2\n> task 2\n> task 3\n> task 4\n>> task 4 subtask 1"></textarea>
-                <input id="parse-tasks-button" class="menu_button" type="button" value="Parse Tasks" />
+                <!-- Button to Show Textarea -->
+                <input id="show-textarea-button" class="menu_button" type="button" value="Add Tasks and Subtasks" />
+
+                <!-- New Textarea for Bulk Task Input, initially hidden -->
+                <div id="bulk-task-input-container" style="display: none;">
+                    <label for="bulk-task-input"><small>Enter tasks and subtasks in the format described</small></label>
+                    <textarea id="bulk-task-input" class="text_pole textarea_compact" rows="8" placeholder="> task 1\n>> task 1 subtask 1\n>> task 1 subtask 2\n> task 2\n> task 3\n> task 4\n>> task 4 subtask 1"></textarea>
+                    <input id="parse-tasks-button" class="menu_button" type="button" value="Parse Tasks" />
+                    <input id="export-tasks-button" class="menu_button" type="button" value="Export Tasks to Text" />
+                </div>
 
                 <div id="objective-tasks"> </div>
                 <div class="objective_block margin-bot-10px">
@@ -842,7 +847,6 @@ jQuery(() => {
                 <div class="objective_block flex-container">
                     <input id="objective_prompt_edit" class="menu_button" type="submit" value="Edit Prompts" />
                 </div>
-
                 <hr class="sysHR">
             </div>
         </div>
@@ -891,6 +895,14 @@ jQuery(() => {
         const input = $('#bulk-task-input').val();
         parseTasksFromInput(input);
     });
+
+    // Add the button event handler to show/hide the textarea
+    $('#show-textarea-button').on('click', () => {
+        $('#bulk-task-input-container').toggle();
+    });
+
+    // Add the button event handler to export the tasks to the textarea
+    $('#export-tasks-button').on('click', exportTasksToTextarea);
 });
 
 function parseTasksFromInput(input) {
@@ -921,4 +933,24 @@ function parseTasksFromInput(input) {
 
     updateUiTaskList();
     setCurrentTask();
+}
+
+function exportTasksToTextarea() {
+    const formatTasks = (task, level = 0) => {
+        const prefix = '>'.repeat(level + 1);
+        let result = `${prefix} ${task.description}\n`;
+
+        for (const child of task.children) {
+            result += formatTasks(child, level + 1);
+        }
+
+        return result;
+    };
+
+    let formattedTasks = '';
+    for (const task of currentObjective.children) {
+        formattedTasks += formatTasks(task);
+    }
+
+    $('#bulk-task-input').val(formattedTasks);
 }
