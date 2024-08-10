@@ -60,7 +60,7 @@ function substituteParamsPrompts(content, substituteGlobal) {
     content = content.replace(/{{objective}}/gi, currentObjective.description);
     content = content.replace(/{{task}}/gi, currentTask.description);
     content = content.replace(/{{nextTask}}/gi, nextTask?.description);
-    
+
     content = content.replace(/{{subject}}/gi, currentTask.subject || 'Your');
     if (currentTask.parent) {
         content = content.replace(/{{parent}}/gi, currentTask.parent.description);
@@ -172,7 +172,7 @@ function setCurrentTask(taskId = null, skipSave = false) {
         let lastCharacter = context.characters[context.characterId].avatar
         let nextInGroupPossible = false;
         if (context.groupId) {
-            let group = context.groups?.filter(g.id == context.groupId)?.[0]
+            let group = context.groups?.filter((g) => g.id == context.groupId)?.[0]
             let groupMembers = group.members.filter((gm) => group.disabled_members.includes(gm))
             let upcoming = groupMembers.filter((x) => x != lastCharacter)
             nextInGroupPossible = upcoming.includes(currentTask.subject)
