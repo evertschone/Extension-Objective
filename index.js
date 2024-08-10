@@ -582,10 +582,18 @@ const defaultSettings = {
     prompts: defaultPrompts,
 };
 
+function resetCharacterDropdown() {
+    const characterSelect = $('#character-select');
+    characterSelect.empty();
+    populateCharacterDropdown();
+}
+
+
 // Convenient single call. Not much at the moment.
 function resetState() {
     lastMessageWasSwipe = false;
     loadSettings();
+    resetCharacterDropdown();
 }
 
 //
