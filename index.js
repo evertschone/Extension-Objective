@@ -173,7 +173,7 @@ function setCurrentTask(taskId = null, skipSave = false) {
         let nextInGroupPossible = false;
         if (context.groupId) {
             let group = context.groups?.filter((g) => g.id == context.groupId)?.[0]
-            let groupMembers = group.members.filter((gm) => group.disabled_members.includes(gm))
+            let groupMembers = group.members.filter((gm) => !group.disabled_members.includes(gm))
             let upcoming = groupMembers.filter((x) => x != lastCharacter)
             nextInGroupPossible = upcoming.includes(currentTask.subject)
         }
