@@ -18,6 +18,7 @@ let globalTasks = [];
 let currentChatId = '';
 let currentObjective = null;
 let currentTask = null;
+let nextTask = null;
 let checkCounter = 0;
 let lastMessageWasSwipe = false;
 
@@ -58,7 +59,9 @@ function getTaskByIdRecurse(taskId, task) {
 function substituteParamsPrompts(content, substituteGlobal) {
     content = content.replace(/{{objective}}/gi, currentObjective.description);
     content = content.replace(/{{task}}/gi, currentTask.description);
-    content = content.replace(/{{subject}}/gi, currentTask.subject || 'The character');
+    content = content.replace(/{{nextTask}}/gi, nextTask?.description);
+    
+    content = content.replace(/{{subject}}/gi, currentTask.subject || 'Your');
     if (currentTask.parent) {
         content = content.replace(/{{parent}}/gi, currentTask.parent.description);
     }
@@ -166,7 +169,15 @@ function setCurrentTask(taskId = null, skipSave = false) {
 
     const description = currentTask.description || null;
     if (description) {
-        if (context.currentCharacter === currentTask.subject || context.currentCharacter === 'Your') {
+        let lastCharacter = context.characters[context.characterId].avatar
+        let nextInGroupPossible = false;
+        if (context.groupId) {
+            let group = context.groups?.filter(g.id == context.groupId)?.[0]
+            let groupMembers = group.members.filter((gm) => group.disabled_members.includes(gm))
+            let upcoming = groupMembers.filter((x) => x != lastCharacter)
+            nextInGroupPossible = upcoming.includes(currentTask.subject)
+        }
+        if (lastCharacter != currentTask.subject + ".png" || nextInGroupPossible || currentTask.subject === 'Your') {
             const extensionPromptText = substituteParamsPrompts(objectivePrompts.currentTask, true);
 
             $('.objective-task').css({ 'border-color': '', 'border-width': '' });
@@ -988,21 +999,19 @@ function exportTasksToTextarea() {
     const formatTasks = (task, level = 0) => {
         const prefix = '>'.repeat(level + 1);
         const subjectText = task.subject ? `[${task.subject}] ` : '';
-        let result = `${
-            prefix} ${subjectText}${task.description}\n`;
+        let result = `${prefix} ${subjectText}${task.description}\n`;
 
-            for (const child of task.children) {
-                result += formatTasks(child, level + 1);
-            }
-    
-            return result;
-        };
-    
-        let formattedTasks = '';
-        for (const task of currentObjective.children) {
-            formattedTasks += formatTasks(task);
+        for (const child of task.children) {
+            result += formatTasks(child, level + 1);
         }
-    
-        $('#bulk-task-input').val(formattedTasks);
+
+        return result;
+    };
+
+    let formattedTasks = '';
+    for (const task of currentObjective.children) {
+        formattedTasks += formatTasks(task);
     }
-    
+
+    $('#bulk-task-input').val(formattedTasks);
+}
