@@ -175,7 +175,7 @@ function setCurrentTask(taskId = null, skipSave = false) {
             let group = context.groups?.filter((g) => g.id == context.groupId)?.[0]
             let groupMembers = group.members.filter((gm) => !group.disabled_members.includes(gm))
             let upcoming = groupMembers.filter((x) => x != lastCharacter)
-            nextInGroupPossible = upcoming.includes(currentTask.subject)
+            nextInGroupPossible = upcoming.includes(currentTask.subject+".png")
         }
         if ((!context.groupId && lastCharacter != currentTask.subject + ".png") || nextInGroupPossible || currentTask.subject === 'Your') {
             const extensionPromptText = substituteParamsPrompts(objectivePrompts.currentTask, true);
