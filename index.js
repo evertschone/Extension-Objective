@@ -169,7 +169,7 @@ function setCurrentTask(taskId = null, skipSave = false) {
 
     const description = currentTask.description || null;
     if (description) {
-        let lastCharacter = context.characters[context.characterId].avatar
+        let lastCharacter = context.characters[context.characterId]?.avatar || context.chat[context.chat.length-1].original_avatar
         let nextInGroupPossible = false;
         if (context.groupId) {
             let group = context.groups?.filter((g) => g.id == context.groupId)?.[0]
@@ -177,7 +177,7 @@ function setCurrentTask(taskId = null, skipSave = false) {
             let upcoming = groupMembers.filter((x) => x != lastCharacter)
             nextInGroupPossible = upcoming.includes(currentTask.subject)
         }
-        if (lastCharacter != currentTask.subject + ".png" || nextInGroupPossible || currentTask.subject === 'Your') {
+        if ((!context.groupId && lastCharacter != currentTask.subject + ".png") || nextInGroupPossible || currentTask.subject === 'Your') {
             const extensionPromptText = substituteParamsPrompts(objectivePrompts.currentTask, true);
 
             $('.objective-task').css({ 'border-color': '', 'border-width': '' });
