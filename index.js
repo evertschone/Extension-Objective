@@ -169,15 +169,15 @@ function setCurrentTask(taskId = null, skipSave = false) {
 
     const description = currentTask.description || null;
     if (description) {
-        let lastCharacter = context.characters[context.characterId]?.avatar || context.chat[context.chat.length-1].original_avatar
-        let nextInGroupPossible = false;
-        if (context.groupId) {
-            let group = context.groups?.filter((g) => g.id == context.groupId)?.[0]
-            let groupMembers = group.members.filter((gm) => !group.disabled_members.includes(gm))
-            let upcoming = groupMembers.filter((x) => x != lastCharacter)
-            nextInGroupPossible = upcoming.includes(currentTask.subject+".png")
-        }
-        if ((!context.groupId && lastCharacter != currentTask.subject + ".png") || nextInGroupPossible || currentTask.subject === 'Your') {
+        // let lastCharacter = context.characters[context.characterId]?.avatar || context.chat[context.chat.length-1].original_avatar
+        // let nextInGroupPossible = false;
+        // if (context.groupId) {
+        //     let group = context.groups?.filter((g) => g.id == context.groupId)?.[0]
+        //     let groupMembers = group.members.filter((gm) => !group.disabled_members.includes(gm))
+        //     let upcoming = groupMembers.filter((x) => x != lastCharacter)
+        //     nextInGroupPossible = upcoming.includes(currentTask.subject+".png")
+        // }
+        // if ((!context.groupId && lastCharacter != currentTask.subject + ".png") || nextInGroupPossible || currentTask.subject === 'Your') {
             const extensionPromptText = substituteParamsPrompts(objectivePrompts.currentTask, true);
 
             $('.objective-task').css({ 'border-color': '', 'border-width': '' });
@@ -192,9 +192,9 @@ function setCurrentTask(taskId = null, skipSave = false) {
 
             context.setExtensionPrompt(MODULE_NAME, extensionPromptText, 1, $('#objective-chat-depth').val());
             console.info(`Current task in context.extensionPrompts.Objective is ${JSON.stringify(context.extensionPrompts.Objective)}`);
-        } else {
-            console.info('Current task is not for the current character.');
-        }
+        // } else {
+        //     console.info('Current task is not for the current character.');
+        // }
     } else {
         context.setExtensionPrompt(MODULE_NAME, '');
         console.info('No current task');
